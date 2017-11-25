@@ -1,7 +1,10 @@
 package com.example.zimtis.myapplication;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -12,19 +15,20 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.IOException;
 
-import jxl.CellType;
-import jxl.Sheet;
 import jxl.Workbook;
 import jxl.read.biff.BiffException;
 import jxl.write.Label;
-import jxl.write.WritableCell;
 import jxl.write.WritableSheet;
 import jxl.write.WritableWorkbook;
 import jxl.write.WriteException;
+import me.zhanghai.android.effortlesspermissions.EffortlessPermissions;
+import pub.devrel.easypermissions.AfterPermissionGranted;
+import pub.devrel.easypermissions.EasyPermissions;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
-    public static String FOLDER = "testFolder";
+    public static       String FOLDER                   = "testFolder";
+    public static final int    REQUEST_EXTERNAL_STORAGE = 500;
 
     private EditText editText;
     private Button   save;
@@ -33,6 +37,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Wir fragen nach den Benötigten Berechtigungen.
+        this.checkPermission();
 
         try {
             // Hier wird geguckt, ob der Ordner bereits vorhanden ist, wenn nicht, wird er erstellt.
@@ -44,6 +51,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Log.e("error", e.getMessage());
         }
 
+
+
         // referenzen auf die editText und button holen
         this.editText = findViewById(R.id.editText);
         this.save = findViewById(R.id.button);
@@ -53,16 +62,33 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     }
 
+    @AfterPermissionGranted(REQUEST_EXTERNAL_STORAGE)
+    private void checkPermission() {
+        String[] permissions = {Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
+        if (EffortlessPermissions.hasPermissions(this, permissions)) {
+        } else {
+            EffortlessPermissions.requestPermissions(this, "Um zu funktionieren, müssen wir einige Berechtigungen erfragen.", REQUEST_EXTERNAL_STORAGE, permissions);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
+    }
+
     @Override
     public void onClick(View view) {
+
         // wert auslesen
         String value = this.editText.getText().toString();
 
-        // Excel datei öffnen
+        // wir holen uns eine Referenz auf den Ordner i ndem die Protokolle gespeichert werden sollen
 
         File folder = new File(Environment.getExternalStorageDirectory(), FOLDER);
 
-        /// wir gucken ob wir die vorlage haben
+        /// wir gucken ob wir die Vorlage.xls haben
 
         File preset = new File(folder, "Vorlage.xls");
         if (preset.exists()) {
@@ -77,13 +103,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 // wir holen uns die erste Tabelle aus der Datei
                 WritableSheet sheet = newWorkbook.getSheet(0);
 
-                // wir ersetllen ein neues label welches an der stelle 0,0 angezeigt werden soll, also in der ersten spalte und ersten reihe
+                //- Den Nachfolgenden Bereich müssen wir für jeden Wert wiederholen, den wir schreiben wollen. Natürlich mit den jeweiligen Daten
+
+                // wir ersetllen ein neues label welches an der stelle 0,0 angezeigt werden soll, also in der ersten spalte der ersten Reihe
                 // hier setzten wir auch gleich den Wert für die neue Zelle
                 Label newValue = new Label(0, 0, value);
                 // wir fühgen die neue Zelle in die Tabell ein
                 sheet.addCell(newValue);
 
-                // new Exceldatei schreiben
+                //-
+
+                // neue Exceldatei schreiben
                 newWorkbook.write();
                 // und abschließen
                 newWorkbook.close();
